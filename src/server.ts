@@ -1,12 +1,16 @@
 // const express = require("express"); CJS
 import express from "express";
+import cors from "cors";
 import "dotenv/config";
 import { connectDB } from "./config/db";
 import router from "./router";
+import { corsConfig } from "./config/cors";
 
-const app = express();
 connectDB();
 
+const app = express();
+//cors
+app.use(cors(corsConfig)); // habilitamos cors
 //express middleware part
 app.use(express.json());
 

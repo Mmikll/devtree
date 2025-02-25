@@ -3,6 +3,7 @@ import User from "../models/User"; //User is where the documents of users are st
 import type { Request, Response } from "express";
 import { checkPassword, hashPassword } from "../utils/auth";
 import slugify from "slugify";
+import { generateJWT } from "../utils/jwt";
 
 export const createAccount = async (req: Request, res: Response) => {
   try {
@@ -55,7 +56,9 @@ export const login = async (req: Request, res: Response) => {
       res.status(401).json({ error: error.message });
       return;
     }
-    res.json({ success: true, msg: "user authenticated" });
+    //generate token
+    const token = generateJWT({ id: user._id });
+    res.json(token);
   } catch (err) {
     res
       .status(404)
