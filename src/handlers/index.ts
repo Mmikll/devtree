@@ -3,7 +3,9 @@ import User from "../models/User"; //User is where the documents of users are st
 import type { Request, Response } from "express";
 import { checkPassword, hashPassword } from "../utils/auth";
 import slugify from "slugify";
+import formidable from "formidable";
 import { generateJWT } from "../utils/jwt";
+import cloudinary from "../config/cloudinary";
 
 export const createAccount = async (req: Request, res: Response) => {
   try {
@@ -63,5 +65,55 @@ export const login = async (req: Request, res: Response) => {
     res
       .status(404)
       .json({ error: "Internal server error", details: err.message });
+  }
+};
+
+export const getUser = async (req: Request, res: Response) => {
+  res.json(req.user);
+};
+
+export const updateProfile = async (req: Request, res: Response) => {
+  try {
+    const { description } = req.body;
+    const handle = slugify(req.body.handle, "");
+    const handleExists = await User.findOne({ handle });
+    if (handleExists && handleExists.email !== req.user.email) {
+      res.status(409).json({ error: "Username already exists" });
+      return;
+    }
+    //update user
+    req.user.description = description;
+    req.user.handle = handle;
+    await req.user.save();
+    res.send("user profile updated");
+  } catch (e) {
+    const error = new Error("There was an error");
+    res.status(500).json({ error: error.message });
+    return;
+  }
+};
+
+export const uploadImage = async (req: Request, res: Response) => {
+  const form = formidable({
+    multiples: false,
+  });
+  form.parse(req, (error, fields, files) => {
+    console.log(error);
+    console.log(fields);
+    cloudinary.uploader.upload(
+      files.file[0].filepath,
+      {},
+      async (error, result) => {
+        console.log(result);
+        console.log(error);
+      }
+    );
+  });
+  try {
+    console.log("from upload image");
+  } catch (e) {
+    const error = new Error("Error uploading the image");
+    res.status(500).json({ error: error });
+    return;
   }
 };
