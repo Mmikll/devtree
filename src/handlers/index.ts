@@ -3,7 +3,10 @@ import User from "../models/User"; //User is where the documents of users are st
 import type { Request, Response } from "express";
 import { checkPassword, hashPassword } from "../utils/auth";
 import slugify from "slugify";
+import formidable from "formidable";
 import { generateJWT } from "../utils/jwt";
+import cloudinary from "../config/cloudinary";
+import { v4 as uuid } from "uuid";
 
 export const createAccount = async (req: Request, res: Response) => {
   try {
@@ -63,5 +66,61 @@ export const login = async (req: Request, res: Response) => {
     res
       .status(404)
       .json({ error: "Internal server error", details: err.message });
+  }
+};
+
+export const getUser = async (req: Request, res: Response) => {
+  res.json(req.user);
+};
+
+export const updateProfile = async (req: Request, res: Response) => {
+  try {
+    const { description } = req.body;
+    const handle = slugify(req.body.handle, "");
+    const handleExists = await User.findOne({ handle });
+    if (handleExists && handleExists.email !== req.user.email) {
+      res.status(409).json({ error: "Username already exists" });
+      return;
+    }
+    //update user
+    req.user.description = description;
+    req.user.handle = handle;
+    await req.user.save();
+    res.send("user profile updated");
+  } catch (e) {
+    const error = new Error("There was an error");
+    res.status(500).json({ error: error.message });
+    return;
+  }
+};
+
+export const uploadImage = async (req: Request, res: Response) => {
+  const form = formidable({
+    multiples: false,
+  });
+
+  try {
+    form.parse(req, (error, fields, files) => {
+      cloudinary.uploader.upload(
+        files.file[0].filepath,
+        { public_id: uuid() },
+        async (error, result) => {
+          if (error) {
+            const error = new Error("Error uploading the image");
+            res.status(500).json({ error: error });
+            return;
+          }
+          if (result) {
+            req.user.image = result.secure_url;
+            await req.user.save();
+            res.status(200).json({ image: result.secure_url });
+          }
+        }
+      );
+    });
+  } catch (e) {
+    const error = new Error("Error uploading the image");
+    res.status(500).json({ error: error });
+    return;
   }
 };

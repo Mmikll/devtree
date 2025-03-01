@@ -1,9 +1,16 @@
 import { Router } from "express";
-import { createAccount, login } from "./handlers";
+import {
+  createAccount,
+  getUser,
+  login,
+  updateProfile,
+  uploadImage,
+} from "./handlers";
 import { body } from "express-validator";
 import { handleInputErrors } from "./middlewares/validation";
+import { authentication } from "./middlewares/auth";
 //middleware
-const router = Router();
+const router: Router = Router();
 
 //Authentication and Register
 router.post(
@@ -25,4 +32,18 @@ router.post(
   handleInputErrors,
   login
 );
+
+router.get("/user", authentication, getUser);
+
+router.patch(
+  "/user",
+  body("handle").notEmpty().withMessage("Handle cannot be empty"),
+  body("description").notEmpty().withMessage("Description can't be empty"),
+  handleInputErrors,
+  authentication,
+  updateProfile
+);
+
+router.post("/user/image", authentication, uploadImage);
+
 export default router;
