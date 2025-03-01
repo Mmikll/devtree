@@ -6,6 +6,7 @@ import slugify from "slugify";
 import formidable from "formidable";
 import { generateJWT } from "../utils/jwt";
 import cloudinary from "../config/cloudinary";
+import { v4 as uuid } from "uuid";
 
 export const createAccount = async (req: Request, res: Response) => {
   try {
@@ -97,20 +98,26 @@ export const uploadImage = async (req: Request, res: Response) => {
   const form = formidable({
     multiples: false,
   });
-  form.parse(req, (error, fields, files) => {
-    console.log(error);
-    console.log(fields);
-    cloudinary.uploader.upload(
-      files.file[0].filepath,
-      {},
-      async (error, result) => {
-        console.log(result);
-        console.log(error);
-      }
-    );
-  });
+
   try {
-    console.log("from upload image");
+    form.parse(req, (error, fields, files) => {
+      cloudinary.uploader.upload(
+        files.file[0].filepath,
+        { public_id: uuid() },
+        async (error, result) => {
+          if (error) {
+            const error = new Error("Error uploading the image");
+            res.status(500).json({ error: error });
+            return;
+          }
+          if (result) {
+            req.user.image = result.secure_url;
+            await req.user.save();
+            res.status(200).json({ image: result.secure_url });
+          }
+        }
+      );
+    });
   } catch (e) {
     const error = new Error("Error uploading the image");
     res.status(500).json({ error: error });
